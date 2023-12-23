@@ -16,8 +16,8 @@ class Config(BaseSettings):
     CORS_ORIGINS_REGEX: str | None = None
 
     JWT_SECRET_KEY: str
-    JWT_ACCESS_TOKEN_EXPIRE_SECS: int = 15
-    JWT_REFRESH_TOKEN_EXPIRE_SECS: int = 60 * 30
+    JWT_ACCESS_TOKEN_EXPIRE_SECS: int = 5 * 60
+    JWT_REFRESH_TOKEN_EXPIRE_SECS: int = 7 * 24 * 60
 
     @property
     def is_debug(self):

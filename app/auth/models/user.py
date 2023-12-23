@@ -11,8 +11,8 @@ prefix = "auth"
 
 
 class UserBase(SQLModel):
-    username: str = Field(nullable=False, unique=True)
-    email: str = Field(nullable=False, unique=True)
+    username: str = Field(nullable=False, unique=True, index=True)
+    email: str = Field(nullable=False, unique=True, index=True)
 
 
 class User(UUIDModel, TimestampModel, UserBase, table=True):

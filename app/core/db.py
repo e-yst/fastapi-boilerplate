@@ -5,7 +5,9 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.config import settings
 
 async_engine = create_async_engine(
-    str(settings.DB_CONN_STR), echo=settings.is_debug, future=True
+    settings.DB_CONN_STR.unicode_string(),
+    echo=settings.is_debug,
+    future=True,
 )
 
 

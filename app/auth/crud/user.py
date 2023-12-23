@@ -106,3 +106,6 @@ async def get_users_crud(
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> UsersCRUD:
     return UsersCRUD(session=session)
+
+
+UsersCrudDep = Annotated[UsersCRUD, Depends(get_users_crud)]

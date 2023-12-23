@@ -18,6 +18,6 @@
 		}
 	},
 	"forwardPorts": [
-		"postgresql:5432"
+		"postgres:5432"
 	]
 }
