@@ -15,7 +15,7 @@ from app.auth.jwt import (
     validate_refresh_token,
 )
 from app.auth.models.jwt import Token, TokenData
-from app.auth.models.refresh_token import RefreshToken, RefreshTokenCreate
+from app.auth.models.refresh_token import RefreshTokenCreate
 from app.auth.models.user import User, UserCreate, UserRead
 from app.core.config import settings
 
