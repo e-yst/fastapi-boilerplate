@@ -1,0 +1,12 @@
+alembic
+asyncpg~=0.29.0
+email-validator
+fastapi~=0.105.0
+loguru
+passlib[bcrypt]
+pydantic-settings~=2.1.0
+pydantic~=2.5.2
+python-jose[cryptography]
+python-multipart
+sqlmodel~=0.0.14
+uvicorn[standard]

@@ -1,0 +1,25 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Uviorn: run server",
+      "type": "process",
+      "command": "uvicorn",
+      "args": [
+        "app.main:app",
+        "--reload"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "PostgreSQL: terminal",
+      "type": "shell",
+      "command": "psql",
+      "args": [
+        "${env:DB_CONN_STR}"
+      ]
+    }
+  ]
+}
