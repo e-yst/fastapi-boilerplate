@@ -1,4 +1,6 @@
 -r base.txt
 black
 coverage
+httpx
 isort
+pytest-asyncio
