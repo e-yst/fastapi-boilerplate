@@ -30,14 +30,15 @@ class UserCreate(UserBase):
     def hash_password(cls, v: str) -> str:
         return get_password_hash(v)
 
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "username": "johndoe",
                 "email": "johndoe@example.com",
                 "password": "secret",
             }
         }
+    }
 
 
 class UserRead(UserBase):
@@ -46,8 +47,8 @@ class UserRead(UserBase):
     is_admin: bool
     is_active: bool
 
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "id": "12345678-1234-5678-1234-567812345678",
                 "username": "johndoe",
@@ -56,6 +57,7 @@ class UserRead(UserBase):
                 "is_active": True,
             }
         }
+    }
 
 
 class UserPatch(UserBase):
@@ -63,8 +65,8 @@ class UserPatch(UserBase):
     email: Optional[str]
     password: Optional[str]
 
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "username": "johndoe",
                 "email": "johndoe@example.com",
@@ -72,3 +74,4 @@ class UserPatch(UserBase):
                 "is_active": True,
             }
         }
+    }
