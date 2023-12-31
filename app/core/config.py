@@ -1,4 +1,4 @@
-from pydantic import PostgresDsn, field_validator
+from pydantic import PostgresDsn, field_validator, model_validator
 from pydantic_core import MultiHostUrl
 from pydantic_settings import BaseSettings
 
@@ -33,6 +33,15 @@ class Config(BaseSettings):
             hosts=v.hosts(),
             path=v.path.lstrip("/"),
         )
+
+    @model_validator(mode="after")
+    def db_fix_for_test_stage(self):
+        if self.ENVIRONMENT == Environment.TESTING:
+            db_str = self.DB_CONN_STR
+            self.DB_CONN_STR = db_str.build(
+                scheme=db_str.scheme, hosts=db_str.hosts(), path="postgres"
+            )
+        return self
 
 
 settings = Config()

@@ -51,3 +51,7 @@ class UpdatedAtModel(SQLModel):
 
 class TimestampModel(CreateAtModel, UpdatedAtModel):
     pass
+
+
+class DetailResp(SQLModel):
+    detail: str = "success"

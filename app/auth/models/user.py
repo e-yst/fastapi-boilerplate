@@ -1,11 +1,12 @@
 from typing import Optional
 from uuid import UUID
 
-from pydantic import EmailStr, field_validator
+from fastapi import HTTPException, status
+from pydantic import EmailStr, field_validator, model_validator
 from sqlmodel import Field, SQLModel
 
 from app.auth.security import get_password_hash
-from app.core.models import TimestampModel, UUIDModel
+from app.core.models import DetailResp, TimestampModel, UUIDModel
 
 prefix = "auth"
 
@@ -25,6 +26,7 @@ class User(UUIDModel, TimestampModel, UserBase, table=True):
 
 class UserCreate(UserBase):
     password: str
+    email: EmailStr
 
     @field_validator("password")
     def hash_password(cls, v: str) -> str:
@@ -61,9 +63,22 @@ class UserRead(UserBase):
 
 
 class UserPatch(UserBase):
-    username: Optional[str]
-    email: Optional[str]
-    password: Optional[str]
+    username: Optional[str] = None
+    email: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_admin: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def check_if_at_least_one(self):
+        if not (self.username or self.email or self.is_active or self.is_admin):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                details=(
+                    "At least one of username, email, "
+                    "is_active, is_admin must be provided"
+                ),
+            )
+        return self
 
     model_config = {
         "json_schema_extra": {
@@ -75,3 +90,7 @@ class UserPatch(UserBase):
             }
         }
     }
+
+
+class UserDetailResp(DetailResp):
+    user: UserRead

@@ -6,7 +6,7 @@ from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.auth.models.user import User, UserCreate
+from app.auth.models.user import User, UserCreate, UserPatch
 from app.core.db import get_async_session
 
 
@@ -53,7 +53,7 @@ class UsersCRUD:
         stmt = select(User).where(
             *(getattr(User, key) == kwargs[key] for key in kwargs)
         )
-        results = await self.session.exec(statement=stmt)
+        results = await self.session.execute(statement=stmt)
         user = results.scalar_one_or_none()
 
         if user is None:
@@ -61,6 +61,29 @@ class UsersCRUD:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found",
             )
+
+        return user
+
+    async def update(self, user_id: str | UUID, user_patch: UserPatch) -> User:
+        """
+        Update a user in the database based on the provided user ID.
+
+        Args:
+            user_id (str or UUID): The ID of the user to be updated.
+            user (UserPatch): The user to be updated.
+
+        Returns:
+            User: The updated user.
+
+        """
+        user = await self.get(id=user_id)
+        update_data = user_patch.model_dump(exclude_none=True, exclude_unset=True)
+        for k, v in update_data.items():
+            setattr(user, k, v)
+
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
 
         return user
 
@@ -76,7 +99,7 @@ class UsersCRUD:
         """
         stmt = delete(User).where(User.id == user_id)
 
-        await self.session.exec(statement=stmt)
+        await self.session.execute(statement=stmt)
         await self.session.commit()
 
         return True
@@ -94,7 +117,7 @@ class UsersCRUD:
         stmt = select(User.id).where(
             or_(User.email == user.email, User.username == user.username)
         )
-        result = await self.session.exec(statement=stmt)
+        result = await self.session.execute(statement=stmt)
         if result.scalars().first():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

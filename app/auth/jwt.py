@@ -8,6 +8,7 @@ from jose import JWTError, jwt
 
 from app.auth.crud.user import UsersCrudDep
 from app.auth.models.jwt import Token, TokenData
+from app.auth.models.user import UserRead
 from app.auth.security import verify_password
 from app.core.config import settings
 
@@ -51,6 +52,16 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+
+async def get_admin_user(user: Annotated[UserRead, Depends(get_current_user)]):
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user doesn't have enough privileges",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
