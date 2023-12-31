@@ -2,7 +2,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from pydantic import EmailStr, field_validator, model_validator
+from pydantic import EmailStr, field_serializer, field_validator, model_validator
 from sqlmodel import Field, SQLModel
 
 from app.auth.security import get_password_hash
@@ -63,6 +63,7 @@ class UserRead(UserBase):
 
 
 class UserPatch(UserBase):
+    user_id: Optional[UUID] = Field(None, alias="id")
     username: Optional[str] = None
     email: Optional[str] = None
     is_active: Optional[bool] = None
@@ -73,7 +74,7 @@ class UserPatch(UserBase):
         if not (self.username or self.email or self.is_active or self.is_admin):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                details=(
+                detail=(
                     "At least one of username, email, "
                     "is_active, is_admin must be provided"
                 ),

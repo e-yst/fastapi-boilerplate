@@ -76,8 +76,12 @@ class UsersCRUD:
             User: The updated user.
 
         """
-        user = await self.get(id=user_id)
+
         update_data = user_patch.model_dump(exclude_none=True, exclude_unset=True)
+        target_user_id = (
+            update_data.pop("user_id") if "user_id" in update_data else user_id
+        )
+        user = await self.get(id=target_user_id)
         for k, v in update_data.items():
             setattr(user, k, v)
 

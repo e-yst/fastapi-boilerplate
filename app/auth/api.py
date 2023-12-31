@@ -55,7 +55,7 @@ async def refresh_token(incoming_token: RefreshTokenReq, user: GetCurrentUserDep
     return create_token_set(user.id)
 
 
-@router.delete("/users/{user_id}", response_model=DetailResp)
+@router.delete("/users/{target_user_id}", response_model=DetailResp)
 async def delete_user(
     target_user_id: UUID,
     user: Annotated[User, Depends(get_admin_user)],

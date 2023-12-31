@@ -4,3 +4,4 @@ coverage
 httpx
 isort
 pytest-asyncio
+pytest-env

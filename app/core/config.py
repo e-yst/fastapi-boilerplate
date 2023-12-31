@@ -1,4 +1,4 @@
-from pydantic import PostgresDsn, field_validator, model_validator
+from pydantic import PostgresDsn, computed_field, field_validator, model_validator
 from pydantic_core import MultiHostUrl
 from pydantic_settings import BaseSettings
 
@@ -6,7 +6,12 @@ from app.core.constants import Environment
 
 
 class Config(BaseSettings):
-    DB_CONN_STR: PostgresDsn
+    DB_SCHEME: str
+    DB_USER: str
+    DB_PASSWORD: str
+    DB_HOST: str
+    DB_PORT: int
+    DB_NAME: str
 
     PROJECT_NAME: str = "FastAPI Template"
 
@@ -23,25 +28,12 @@ class Config(BaseSettings):
     def is_debug(self):
         return self.ENVIRONMENT.is_debug
 
-    @field_validator("DB_CONN_STR")
-    def sync_to_async_str(cls, v: MultiHostUrl) -> MultiHostUrl:
-        async_conn_scheme = "postgresql+asyncpg"
-        if v.scheme == async_conn_scheme:
-            return v
-        return v.build(
-            scheme=async_conn_scheme,
-            hosts=v.hosts(),
-            path=v.path.lstrip("/"),
+    @property
+    def DB_CONN_STR(self) -> PostgresDsn:
+        return PostgresDsn(
+            f"{self.DB_SCHEME}://{self.DB_USER}:{self.DB_PASSWORD}"
+            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
-
-    @model_validator(mode="after")
-    def db_fix_for_test_stage(self):
-        if self.ENVIRONMENT == Environment.TESTING:
-            db_str = self.DB_CONN_STR
-            self.DB_CONN_STR = db_str.build(
-                scheme=db_str.scheme, hosts=db_str.hosts(), path="postgres"
-            )
-        return self
 
 
 settings = Config()
