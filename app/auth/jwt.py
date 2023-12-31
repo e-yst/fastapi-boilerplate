@@ -16,8 +16,8 @@ ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 
-async def authenticate_user(username: str, password: str, *, users_crud: UsersCrudDep):
-    user = await users_crud.get(username=username)
+async def authenticate_user(email: str, password: str, *, users_crud: UsersCrudDep):
+    user = await users_crud.get(email=email)
     if not user or not verify_password(password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

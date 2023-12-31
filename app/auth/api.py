@@ -80,4 +80,4 @@ async def update_user(
             detail="You can't update this user",
         )
     user = await users_crud.update(user.id, user_patch)
-    return {"detail": f"User {user.username} updated", "user": user}
+    return {"detail": f"User {user.email} updated", "user": user}

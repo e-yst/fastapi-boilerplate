@@ -8,7 +8,6 @@ endpoint = "/api/v1/auth/users"
 async def test_valid_user_registration(async_client: AsyncClient):
     # Test valid user registration
     user_data = {
-        "username": "testuser",
         "email": "test@example.com",
         "password": "securepassword",
     }
@@ -19,11 +18,10 @@ async def test_valid_user_registration(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_duplicate_username_registration(async_client: AsyncClient):
-    # Test registration with duplicate username
+async def test_duplicate_email_registration(async_client: AsyncClient):
+    # Test registration with duplicate email
     user_data = {
-        "username": "testuser",  # Use an existing username
-        "email": "another_test@example.com",
+        "email": "test@example.com",  # Use an existing email
         "password": "differentpassword",
     }
     await async_client.post(endpoint, json=user_data)
@@ -35,7 +33,6 @@ async def test_duplicate_username_registration(async_client: AsyncClient):
 async def test_invalid_email_registration(async_client: AsyncClient):
     # Test registration with invalid email format
     user_data = {
-        "username": "newuser",
         "email": "invalidemail",  # Invalid email format
         "password": "password123",
     }

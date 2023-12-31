@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 from uuid import UUID
 
@@ -12,7 +13,6 @@ prefix = "auth"
 
 
 class UserBase(SQLModel):
-    username: str = Field(nullable=False, unique=True, index=True)
     email: str = Field(nullable=False, unique=True, index=True)
 
 
@@ -35,7 +35,6 @@ class UserCreate(UserBase):
     model_config = {
         "json_schema_extra": {
             "example": {
-                "username": "johndoe",
                 "email": "johndoe@example.com",
                 "password": "secret",
             }
@@ -53,7 +52,6 @@ class UserRead(UserBase):
         "json_schema_extra": {
             "example": {
                 "id": "12345678-1234-5678-1234-567812345678",
-                "username": "johndoe",
                 "email": "johndoe@example.com",
                 "is_admin": True,
                 "is_active": True,
@@ -64,19 +62,25 @@ class UserRead(UserBase):
 
 class UserPatch(UserBase):
     user_id: Optional[UUID] = None
-    username: Optional[str] = None
+    password: Optional[str] = None
     email: Optional[str] = None
     is_active: Optional[bool] = None
     is_admin: Optional[bool] = None
 
+    @field_serializer("password", check_fields=False)
+    def hash_password(self, v: str):
+        ptn = re.compile(r"^\$2[ayb]\$.{56}$")
+        if not re.match(ptn, v):
+            return get_password_hash(v)
+        return v
+
     @model_validator(mode="after")
     def check_if_at_least_one(self):
-        if not (self.username or self.email or self.is_active or self.is_admin):
+        if not (self.password or self.is_active or self.is_admin):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
-                    "At least one of username, email, "
-                    "is_active, is_admin must be provided"
+                    "At least one of password, email, is_active, is_admin must be provided"
                 ),
             )
         return self
@@ -84,7 +88,6 @@ class UserPatch(UserBase):
     model_config = {
         "json_schema_extra": {
             "example": {
-                "username": "johndoe",
                 "email": "johndoe@example.com",
                 "password": "secret",
                 "is_active": True,

@@ -17,11 +17,9 @@ async def test_update_user_authenticated(
     # Test authenticated user update (allowed updates by non-admin)
     token = create_token_set(users.get("testuser").id)
     headers = {"Authorization": f"Bearer {token.access_token}"}
-    update_data = {
-        "username": "new_username",
-        "email": "new_email@example.com",
-    }
+    update_data = {"password": "newpass"}
     response = await async_client.patch(endpoint, json=update_data, headers=headers)
+    print(f"{response.json()=}")
     assert response.status_code == 200
 
 
@@ -34,8 +32,7 @@ async def test_update_user_by_admin(
     headers = {"Authorization": f"Bearer {token.access_token}"}
     update_data = {
         "user_id": str(users.get("testuser").id),
-        "username": "new_username2",
-        "email": "new_email@example.com",
+        "password": "newpass",
         "is_active": True,
         "is_admin": True,
     }

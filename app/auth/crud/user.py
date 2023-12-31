@@ -2,9 +2,8 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
-from sqlalchemy import delete, or_, select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio.session import AsyncSession
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.auth.models.user import User, UserCreate, UserPatch
 from app.core.db import get_async_session
@@ -43,7 +42,7 @@ class UsersCRUD:
         Returns:
             User: The user object retrieved from the database based on the provided parameters. If no user is found, an HTTPException is raised.
         """
-        allowed_keys = ("id", "username", "email")
+        allowed_keys = ("id", "email")
         for key in kwargs:
             if key not in allowed_keys:
                 raise HTTPException(
@@ -78,6 +77,7 @@ class UsersCRUD:
         """
 
         update_data = user_patch.model_dump(exclude_none=True, exclude_unset=True)
+        print(f"{update_data=}")
         target_user_id = (
             update_data.pop("user_id") if "user_id" in update_data else user_id
         )
@@ -118,14 +118,12 @@ class UsersCRUD:
         Raises:
             HTTPException: If a user with the same username or email already exists.
         """
-        stmt = select(User.id).where(
-            or_(User.email == user.email, User.username == user.username)
-        )
+        stmt = select(User.id).where(User.email == user.email)
         result = await self.session.execute(statement=stmt)
         if result.scalars().first():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User with this username or email already exists",
+                detail="User with this email already exists",
             )
 
 

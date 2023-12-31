@@ -67,31 +67,30 @@ async def async_client(app: FastAPI) -> AsyncGenerator:
 async def users(db_session: AsyncSession) -> dict[str, User]:
     user_data = {
         "admin": {
-            "username": "admin",
             "password": get_password_hash("adminpass"),
             "email": "admin@example.com",
             "is_active": True,
             "is_admin": True,
         },
         "testuser": {
-            "username": "testuser",
             "password": get_password_hash("userpass"),
             "email": "testuser@example.com",
         },
         "testuser2": {
-            "username": "testuser2",
             "password": get_password_hash("userpass"),
             "email": "testuser2@example.com",
         },
     }
 
-    stmt = select(User).where(User.username.in_(user_data.keys()))
+    stmt = select(User).where(
+        User.email.in_(u.get("email") for u in user_data.values())
+    )
     result = await db_session.execute(stmt)
     users: list[User] = result.scalars().all()
     if users:
-        return {u.username: u for u in users}
+        return {u.email.removesuffix("@example.com"): u for u in users}
 
     users = [User(**user_data[i]) for i in user_data]
     db_session.add_all(users)
     await db_session.commit()
-    return {u.username: u for u in users}
+    return {u.email.removesuffix("@example.com"): u for u in users}

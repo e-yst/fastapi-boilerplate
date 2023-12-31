@@ -14,7 +14,7 @@ user_keys = Literal["testuser", "admin"]
 async def test_valid_login(async_client: AsyncClient, users: dict[user_keys, User]):
     # Test valid user login
     login_data = {
-        "username": "testuser",
+        "username": "testuser@example.com",
         "password": "userpass",
     }
     response = await async_client.post(endpoint, data=login_data)
@@ -26,7 +26,7 @@ async def test_valid_login(async_client: AsyncClient, users: dict[user_keys, Use
 async def test_invalid_login(async_client: AsyncClient):
     # Test invalid user login
     login_data = {
-        "username": "invalid_username",
+        "username": "invalid_username@example.com",
         "password": "invalid_password",
     }
     response = await async_client.post(endpoint, data=login_data)
