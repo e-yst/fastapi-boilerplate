@@ -6,7 +6,13 @@ services:
       context: ..
       dockerfile: .devcontainer/Dockerfile
     environment:
-      DB_CONN_STR: postgresql://dbadmin:dbsecret@postgres:5432/template_db
+      # DB_CONN_STR: postgresql://dbadmin:dbsecret@postgres:5432/template_db
+      DB_SCHEME: postgresql+asyncpg
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: template_db
+      DB_USER: dbadmin
+      DB_PASSWORD: dbsecret
       # openssl rand -hex 32
       JWT_SECRET_KEY: 3e84463acdcf5ba0c0ac9dddd020780607a4d567c29b0b52f3a8979015a1d1a5
     volumes:

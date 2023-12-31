@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel  # NEW
 
 # from app.models import Song  # NEW
-from app.auth.models.refresh_token import RefreshToken
 from app.auth.models.user import User
 
 # this is the Alembic Config object, which provides

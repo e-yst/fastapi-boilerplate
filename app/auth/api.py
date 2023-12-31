@@ -1,23 +1,20 @@
-from datetime import timedelta
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 
+from app.auth.crud.user import UsersCrudDep
 from app.auth.jwt import (
-    RefreshTokenCrudDep,
-    UsersCrudDep,
     authenticate_user,
-    create_jwt_token,
-    create_refresh_token,
+    create_token_set,
+    get_admin_user,
     get_current_user,
-    revoke_refresh_token,
     validate_refresh_token,
 )
-from app.auth.models.jwt import Token, TokenData
-from app.auth.models.refresh_token import RefreshToken, RefreshTokenCreate
-from app.auth.models.user import User, UserCreate, UserRead
-from app.core.config import settings
+from app.auth.models.jwt import RefreshTokenReq, Token
+from app.auth.models.user import User, UserCreate, UserDetailResp, UserPatch, UserRead
+from app.core.models import DetailResp
 
 router = APIRouter()
 GetCurrentUserDep = Annotated[User, Depends(get_current_user)]
@@ -38,38 +35,49 @@ async def get_my_account(user: GetCurrentUserDep):
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     users_crud: UsersCrudDep,
-    refresh_token_crud: RefreshTokenCrudDep,
 ):
-    user: User = await authenticate_user(
-        form_data.username, form_data.password, users_crud=users_crud
+    user = await authenticate_user(
+        form_data.username,
+        form_data.password,
+        users_crud=users_crud,
     )
-    token_data = TokenData(sub=user.username)
-    access_token = create_jwt_token(
-        data=token_data.model_dump(),
-        expires_delta=timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_SECS),
-    )
-    refresh_token = await refresh_token_crud.get_valid_token(user.id)
-    if refresh_token is None:
-        refresh_token = await create_refresh_token(user, refresh_token_crud)
-
-    return {"access_token": access_token, "refresh_token": refresh_token}
+    return create_token_set(user.id)
 
 
 @router.put("/token", response_model=Token)
-async def refresh_token(
-    incoming_token: RefreshTokenCreate,
-    user: GetCurrentUserDep,
-    refresh_token_crud: RefreshTokenCrudDep,
-):
-    token = await validate_refresh_token(
-        incoming_token.refresh_token, refresh_token_crud
-    )
-    await revoke_refresh_token(token, refresh_token_crud)
+async def refresh_token(incoming_token: RefreshTokenReq, user: GetCurrentUserDep):
+    decoded_token = validate_refresh_token(incoming_token.refresh_token)
+    if decoded_token.sub != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+    return create_token_set(user.id)
 
-    new_refresh_token = await create_refresh_token(user, refresh_token_crud)
-    access_token_data = TokenData(sub=user.username)
-    access_token = create_jwt_token(
-        data=access_token_data.model_dump(),
-        expires_delta=timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_SECS),
-    )
-    return {"access_token": access_token, "refresh_token": new_refresh_token}
+
+@router.delete("/users/{target_user_id}", response_model=DetailResp)
+async def delete_user(
+    target_user_id: UUID,
+    user: Annotated[User, Depends(get_admin_user)],
+    users_crud: UsersCrudDep,
+):
+    if target_user_id == user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can't delete yourself",
+        )
+    await users_crud.delete(target_user_id)
+    return {"detail": f"User {target_user_id} deleted"}
+
+
+@router.patch("/users", response_model=UserDetailResp)
+async def update_user(
+    user: GetCurrentUserDep, user_patch: UserPatch, users_crud: UsersCrudDep
+):
+    if not user.is_admin and (user_patch.is_admin or user_patch.is_active):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can't update this user",
+        )
+    user = await users_crud.update(user.id, user_patch)
+    return {"detail": f"User {user.email} updated", "user": user}

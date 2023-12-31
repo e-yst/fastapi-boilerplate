@@ -17,6 +17,7 @@ class UUIDModel(SQLModel):
         primary_key=True,
         index=True,
         nullable=False,
+        sa_column_kwargs={"server_default": text("gen_random_uuid()"), "unique": True},
     )
 
 
@@ -33,7 +34,7 @@ class CreateAtModel(SQLModel):
     created_at: datetime = Field(
         default_factory=datetime.utcnow,
         nullable=False,
-        sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")},
+        sa_column_kwargs={"server_default": text("current_timestamp(0)")},
     )
 
 
@@ -42,11 +43,15 @@ class UpdatedAtModel(SQLModel):
         default_factory=datetime.utcnow,
         nullable=False,
         sa_column_kwargs={
-            "server_default": text("CURRENT_TIMESTAMP"),
-            "onupdate": text("CURRENT_TIMESTAMP"),
+            "server_default": text("current_timestamp(0)"),
+            "onupdate": text("current_timestamp(0)"),
         },
     )
 
 
 class TimestampModel(CreateAtModel, UpdatedAtModel):
     pass
+
+
+class DetailResp(SQLModel):
+    detail: str = "success"

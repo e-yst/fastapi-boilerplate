@@ -1,25 +1,23 @@
 from datetime import datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Literal
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 
-from app.auth.crud.refresh_token import RefreshTokenCRUD, get_refresh_token_crud
-from app.auth.crud.user import UsersCRUD, get_users_crud
-from app.auth.models.refresh_token import RefreshToken, RefreshTokenBase
-from app.auth.models.user import User
+from app.auth.crud.user import UsersCrudDep
+from app.auth.models.jwt import Token, TokenData
+from app.auth.models.user import UserRead
 from app.auth.security import verify_password
 from app.core.config import settings
 
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
-UsersCrudDep = Annotated[UsersCRUD, Depends(get_users_crud)]
-RefreshTokenCrudDep = Annotated[RefreshTokenCRUD, Depends(get_refresh_token_crud)]
 
 
-async def authenticate_user(username: str, password: str, *, users_crud: UsersCrudDep):
-    user = await users_crud.get(username=username)
+async def authenticate_user(email: str, password: str, *, users_crud: UsersCrudDep):
+    user = await users_crud.get(email=email)
     if not user or not verify_password(password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -32,55 +30,85 @@ async def authenticate_user(username: str, password: str, *, users_crud: UsersCr
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)], *, users_crud: UsersCrudDep
 ):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
+        user_id: str = payload.get("sub")
 
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except JWTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.args[0],
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-    user = await users_crud.get(username=username)
+    user = await users_crud.get(id=user_id)
     if user is None:
-        raise credentials_exception
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
 
 
-def create_jwt_token(data: dict, expires_delta: timedelta):
-    to_encode = data.copy()
+async def get_admin_user(user: Annotated[UserRead, Depends(get_current_user)]):
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user doesn't have enough privileges",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+
+def create_jwt_token(
+    user_id: str | UUID,
+    tkn_type: Literal["access", "refresh"],
+    expires_delta: timedelta,
+):
     expire = datetime.utcnow() + expires_delta
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=ALGORITHM)
+    to_encode = TokenData(sub=user_id, exp=expire, typ=tkn_type)
+    encoded_jwt = jwt.encode(
+        to_encode.model_dump(),
+        settings.JWT_SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
     return encoded_jwt
 
 
-async def validate_refresh_token(
-    refresh_token: str, refresh_token_crud: RefreshTokenCrudDep
-):
-    token = await refresh_token_crud.get(token_value=refresh_token, is_revoked=False)
-    if token.is_expired:
+def validate_refresh_token(token: str):
+    payload = TokenData(
+        **jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM])
+    )
+    if payload.typ != "refresh":
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is not a refresh token",
         )
-    return token
+    if payload.is_expired:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+        )
+    return payload
 
 
-async def revoke_refresh_token(
-    token: RefreshToken, refresh_token_crud: RefreshTokenCrudDep
-):
-    return await refresh_token_crud.revoke_token(token.id)
-
-
-async def create_refresh_token(
-    user: Annotated[User, Depends(get_current_user)],
-    refresh_token_crud: RefreshTokenCrudDep,
-):
-    token_data = RefreshTokenBase(user_id=user.id)
-    refresh_token: RefreshToken = await refresh_token_crud.create(token_data)
-    return refresh_token.token_value
+def create_token_set(user_id: str | UUID) -> Token:
+    return Token(
+        access_token=create_jwt_token(
+            user_id=user_id,
+            tkn_type="access",
+            expires_delta=timedelta(seconds=settings.JWT_ACCESS_TOKEN_EXPIRE_SECS),
+        ),
+        refresh_token=create_jwt_token(
+            user_id=user_id,
+            tkn_type="refresh",
+            expires_delta=timedelta(seconds=settings.JWT_ACCESS_TOKEN_EXPIRE_SECS),
+        ),
+    )
