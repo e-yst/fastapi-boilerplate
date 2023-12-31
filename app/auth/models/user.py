@@ -63,7 +63,7 @@ class UserRead(UserBase):
 
 
 class UserPatch(UserBase):
-    user_id: Optional[UUID] = Field(None, alias="id")
+    user_id: Optional[UUID] = None
     username: Optional[str] = None
     email: Optional[str] = None
     is_active: Optional[bool] = None
