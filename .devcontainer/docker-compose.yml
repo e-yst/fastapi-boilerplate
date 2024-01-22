@@ -1,34 +1,138 @@
+---
 version: "3.8"
-
 services:
   app:
     build:
       context: ..
       dockerfile: .devcontainer/Dockerfile
+    command: sleep infinity
     environment:
       # DB_CONN_STR: postgresql://dbadmin:dbsecret@postgres:5432/template_db
-      DB_SCHEME: postgresql+asyncpg
       DB_HOST: postgres
-      DB_PORT: 5432
       DB_NAME: template_db
-      DB_USER: dbadmin
       DB_PASSWORD: dbsecret
+      DB_PORT: 5432
+      DB_SCHEME: postgresql+asyncpg
+      DB_USER: dbadmin
       # openssl rand -hex 32
       JWT_SECRET_KEY: 3e84463acdcf5ba0c0ac9dddd020780607a4d567c29b0b52f3a8979015a1d1a5
     volumes:
       - ../..:/workspaces:cached
       - ~/.ssh:/home/vscode/.ssh:ro
-    command: sleep infinity
+
+  hasura:
+    image: hasura/graphql-engine:v2.36.2.cli-migrations-v3
+    # ports:
+    #   - "8080:8080"
+    restart: on-failure
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://dbadmin:dbsecret@postgres:5432/template_db
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_ADMIN_SECRET: hasuraadminsecret
+      HASURA_GRAPHQL_JWT_SECRET: |
+        {
+          "issuer": "https://localhost:8080",
+          "jwk_url": "http://hydra:4445/admin/keys/hasura-jwk-set",
+          "type": "RS256"
+        }
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz?strict=false"]
+      interval: 30s
+      timeout: 2s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      hasura-jwk:
+        condition: service_completed_successfully
+
+  hasura-jwk:
+    build:
+      context: .
+      dockerfile: Dockerfile.curl
+    command: sh /tmp/create-jwk.sh
+    restart: on-failure
+    volumes:
+      - ./scripts/create-jwk.sh:/tmp/create-jwk.sh:ro
+    depends_on:
+      - hydra
+
+  hydra:
+    command: serve -c /etc/config/hydra/hydra.yml all --dev
+    depends_on:
+      - postgres
+      - hydra-migrate
+    environment:
+      DSN: postgres://hydra:dbsecret@postgres:5432/hydra?sslmode=disable&max_conns=20&max_idle_conns=4
+    image: oryd/hydra:v2.2.0
+    # ports:
+    #   - "4444:4444" # Public port
+    #   - "4445:4445" # Admin port
+    #   - "5555:5555" # Port for hydra token user
+    restart: on-failure
+    volumes:
+      - ./hydra:/etc/config/hydra
+  hydra-migrate:
+    command: migrate -c /etc/config/hydra/hydra.yml sql -e --yes
+    depends_on:
+      - postgres
+    environment:
+      DSN: postgres://hydra:dbsecret@postgres:5432/hydra?sslmode=disable&max_conns=20&max_idle_conns=4
+    image: oryd/hydra:v2.2.0
+    restart: on-failure
+    volumes:
+      - ./hydra:/etc/config/hydra
+
+  kratos-selfservice-ui-node:
+    image: oryd/kratos-selfservice-ui-node:v1.0.0
+    environment:
+      KRATOS_PUBLIC_URL: http://kratos:4433/
+      KRATOS_BROWSER_URL: http://127.0.0.1:4433/
+      HYDRA_ADMIN_URL: http://hydra:4455
+    restart: on-failure
+  kratos:
+    depends_on:
+      - kratos-migrate
+    image: oryd/kratos:v1.0.0
+    # ports:
+    #   - "4433:4433" # public
+    #   - "4434:4434" # admin
+    restart: unless-stopped
+    environment:
+      DSN: postgres://kratos:dbsecret@postgres:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4
+      LOG_LEVEL: trace
+    command: serve -c /etc/config/kratos/kratos.yml --dev --watch-courier
+    volumes:
+      - ./kratos:/etc/config/kratos
+  kratos-migrate:
+    image: oryd/kratos:v1.0.0
+    environment:
+      DSN: postgres://kratos:dbsecret@postgres:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4
+    volumes:
+      - ./kratos:/etc/config/kratos
+    command: -c /etc/config/kratos/kratos.yml migrate sql -e --yes
+    restart: on-failure
+  mailslurper:
+    image: oryd/mailslurper:latest-smtps
+    # ports:
+    #   - '4436:4436'
+    #   - '4437:4437'
 
   postgres:
+    environment:
+      POSTGRES_DB: template_db
+      POSTGRES_PASSWORD: dbsecret
+      POSTGRES_USER: dbadmin
     image: postgres:16-alpine
     restart: unless-stopped
     volumes:
       - postgres-data:/var/lib/postgres/data
-    environment:
-      POSTGRES_USER: dbadmin
-      POSTGRES_DB: template_db
-      POSTGRES_PASSWORD: dbsecret
+      - ./scripts/pg-init.sh:/docker-entrypoint-initdb.d/pg-init.sh:ro
+
+  caddy:
+    image: caddy:2-alpine
+    command: caddy run --watch --config /etc/caddy/Caddyfile
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
 
 volumes:
-  postgres-data:
+  postgres-data: null

@@ -1,0 +1,25 @@
+localhost:8080 {
+	tls internal
+
+	@fastapi {
+		path /api/*
+		path /auth/*
+		path /static/*
+		path /redoc
+		path /docs
+		path /openapi.json
+	}
+
+	@hasura {
+		path /v1*
+		path /v2*
+		path /graphql-engine
+		path /console*
+	}
+
+	handle {
+		reverse_proxy @hasura hasura:8080
+		reverse_proxy /.well-known/* hydra:4444
+		reverse_proxy @fastapi app:8000
+	}
+}
