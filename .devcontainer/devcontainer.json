@@ -22,7 +22,6 @@
 		"postgres:5432",
 		"kratos-selfservice-ui-node:3000",
 		"kratos:4433",
-		"mailslurper:4436",
 		"hydra:4444",
 		"caddy:8080"
 	]

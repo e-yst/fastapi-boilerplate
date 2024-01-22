@@ -113,6 +113,8 @@ services:
     restart: on-failure
   mailslurper:
     image: oryd/mailslurper:latest-smtps
+    volumes:
+      - ./mailslurper.json:/go/src/github.com/mailslurper/mailslurper/cmd/mailslurper/config.json:ro
     # ports:
     #   - '4436:4436'
     #   - '4437:4437'

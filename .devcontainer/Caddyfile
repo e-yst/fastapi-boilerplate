@@ -17,7 +17,28 @@ localhost:8080 {
 		path /console*
 	}
 
+	@mailslurper_www {
+		path /www/blockui/*
+		path /www/bootstrap-daterangepicker/*
+		path /www/bootstrap-dialog/*
+		path /www/bootstrap-growl/*
+		path /www/bootstrap/*
+		path /www/fontawesome/*
+		path /www/handlebars/*
+		path /www/jquery/*
+		path /www/lightbox2/*
+		path /www/mailslurper/*
+		path /www/moment/*
+		path /www/npo/*
+	}
+
 	handle {
+		reverse_proxy /mailslurper mailslurper:4436 {
+			rewrite /
+		}
+		reverse_proxy @mailslurper_www mailslurper:4436
+		reverse_proxy /www/mail* mailslurper:4437
+		
 		reverse_proxy @hasura hasura:8080
 		reverse_proxy /.well-known/* hydra:4444
 		reverse_proxy @fastapi app:8000
