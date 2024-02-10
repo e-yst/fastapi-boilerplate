@@ -6,7 +6,9 @@
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "app",
 	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-	"features": {},
+	"features": {
+		"ghcr.io/devcontainers-contrib/features/quasar-cli:2": {}
+	},
 	"customizations": {
 		"vscode": {
 			"extensions": [

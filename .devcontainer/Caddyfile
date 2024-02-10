@@ -32,7 +32,24 @@ localhost:8080 {
 		path /www/npo/*
 	}
 
+	@kratos {
+		path /self-service/registration/browser
+		path /self-service/registration/flows
+		path /self-service/registration
+		path /regisration
+	}
+
+	log {
+		output stdout
+	}
+
 	handle {
+		# header {
+		# 	Access-Control-Allow-Origin *
+		# 	Access-Control-Allow-Credentials true
+		# 	Access-Control-Allow-Methods *
+		# 	Access-Control-Allow-Headers *
+		# }
 		reverse_proxy /mailslurper mailslurper:4436 {
 			rewrite /
 		}
@@ -41,6 +58,9 @@ localhost:8080 {
 		
 		reverse_proxy @hasura hasura:8080
 		reverse_proxy /.well-known/* hydra:4444
+
+		reverse_proxy @kratos kratos:4433
+
 		reverse_proxy @fastapi app:8000
 	}
 }
